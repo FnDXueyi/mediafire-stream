@@ -246,8 +246,14 @@ function entryRows(file, archive) {
 
 async function probe(file, row, signal) {
   try {
-    const link = await linkFor(file)
-    const archive = await listRar(link, { signal })
+    let archive
+    try {
+      archive = await listRar(await linkFor(file), { signal })
+    } catch (err) {
+      if (signal.aborted) throw err
+      // Download links stop working after a number of requests; try a fresh one.
+      archive = await listRar(await linkFor(file, { fresh: true }), { signal })
+    }
     if (!signal.aborted) row.replaceWith(...entryRows(file, archive))
   } catch (err) {
     if (signal.aborted) return

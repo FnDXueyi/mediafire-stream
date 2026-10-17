@@ -98,14 +98,17 @@ function freshLinkSync(key) {
 class SharedRemoteFile {
   static CURRENT = 0
   static GENERATION = 1
-  static SLOT_BASE = 2
+  static TAIL_LENGTH = 2
+  static SLOT_BASE = 3
   static READY = 2
   static FAILED = 3
 
-  constructor({ size, window, slots, data, ctrl, port }) {
+  constructor({ size, window, slots, tail, data, ctrl, port }) {
     this.size = size
     this.windowSize = window
     this.slots = slots
+    this.tailSize = Math.min(tail, size)
+    this.tailStart = size - this.tailSize
     this.data = new Uint8Array(data)
     this.ctrl = new Int32Array(ctrl)
     this.port = port
@@ -116,10 +119,19 @@ class SharedRemoteFile {
     const end = Math.min(this.pos + length, this.size)
     const out = new Uint8Array(Math.max(0, end - this.pos))
     let written = 0
+    // UnRAR checks the end of the archive before extracting; fetch-worker
+    // grabs that tail first so this small read doesn't queue behind windows.
+    if (this.pos >= this.tailStart && end <= this.size) {
+      this.waitForTail()
+      const from = this.slots * this.windowSize + (this.pos - this.tailStart)
+      out.set(this.data.subarray(from, from + out.length))
+      this.pos = end
+      return out
+    }
     while (this.pos < end) {
       const w = Math.floor(this.pos / this.windowSize)
-      const slot = this.waitForWindow(w)
       const from = this.pos - w * this.windowSize
+      const slot = this.waitForBytes(w, from)
       const available = Atomics.load(this.ctrl, this.field(slot, 2)) - from
       const n = Math.min(available, end - this.pos)
       out.set(this.data.subarray(slot * this.windowSize + from, slot * this.windowSize + from + n), written)
@@ -133,8 +145,24 @@ class SharedRemoteFile {
     return SharedRemoteFile.SLOT_BASE + slot * 3 + i
   }
 
-  /** Blocks until window `w` is in a slot; returns the slot number. */
-  waitForWindow(w) {
+  waitForTail() {
+    const { GENERATION, TAIL_LENGTH } = SharedRemoteFile
+    for (let waited = 0; ; ) {
+      const generation = Atomics.load(this.ctrl, GENERATION)
+      const length = Atomics.load(this.ctrl, TAIL_LENGTH)
+      if (length === this.tailSize) return
+      if (length < 0) throw new Error("Archive download failed")
+      if (Atomics.wait(this.ctrl, GENERATION, generation, 30_000) === "timed-out" && (waited += 30) >= 120) {
+        throw new Error("Archive download stalled")
+      }
+    }
+  }
+
+  /**
+   * Blocks until window `w` has more than `from` bytes in a slot (it may
+   * still be downloading); returns the slot number.
+   */
+  waitForBytes(w, from) {
     const { CURRENT, GENERATION, READY, FAILED } = SharedRemoteFile
     if (Atomics.exchange(this.ctrl, CURRENT, w) !== w) this.port.postMessage({ need: w })
     for (let waited = 0; ; ) {
@@ -142,8 +170,8 @@ class SharedRemoteFile {
       for (let s = 0; s < this.slots; s++) {
         if (Atomics.load(this.ctrl, this.field(s, 1)) !== w) continue
         const state = Atomics.load(this.ctrl, this.field(s, 0))
-        if (state === READY) return s
         if (state === FAILED) throw new Error("Archive download failed")
+        if (state === READY || Atomics.load(this.ctrl, this.field(s, 2)) > from) return s
       }
       if (Atomics.wait(this.ctrl, GENERATION, generation, 30_000) === "timed-out") {
         waited += 30

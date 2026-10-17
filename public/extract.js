@@ -79,6 +79,7 @@ function upperBound(sorted, value) {
 // 6 x 32 MB ~24 MB/s.
 const PARALLEL_WINDOW = 32 * 1024 * 1024
 const PARALLEL_SLOTS = 6
+const PARALLEL_TAIL = 1024 * 1024 // end of the archive, which UnRAR reads first
 
 const files = new Map() // id -> MemoryFile
 let current = null // { id, workers }
@@ -102,12 +103,12 @@ export function startExtraction({ url, key, archiveSize, entry }, onProgress) {
   if (globalThis.crossOriginIsolated) {
     const fetcher = new Worker(new URL("./fetch-worker.js", import.meta.url), { type: "module" })
     workers.push(fetcher)
-    const data = new SharedArrayBuffer(PARALLEL_WINDOW * PARALLEL_SLOTS)
-    const ctrl = new SharedArrayBuffer(4 * (2 + 3 * PARALLEL_SLOTS))
+    const data = new SharedArrayBuffer(PARALLEL_WINDOW * PARALLEL_SLOTS + PARALLEL_TAIL)
+    const ctrl = new SharedArrayBuffer(4 * (3 + 3 * PARALLEL_SLOTS))
     const view = new Int32Array(ctrl)
-    for (let s = 0; s < PARALLEL_SLOTS; s++) view[2 + s * 3 + 1] = -1 // no window yet
+    for (let s = 0; s < PARALLEL_SLOTS; s++) view[3 + s * 3 + 1] = -1 // no window yet
     const channel = new MessageChannel()
-    const common = { window: PARALLEL_WINDOW, slots: PARALLEL_SLOTS, data, ctrl }
+    const common = { window: PARALLEL_WINDOW, slots: PARALLEL_SLOTS, tail: PARALLEL_TAIL, data, ctrl }
     fetcher.postMessage({ url, key, size: archiveSize, ...common, port: channel.port1 }, [channel.port1])
     shared = { ...common, port: channel.port2 }
   }
