@@ -1,0 +1,15 @@
+{
+  "name": "mediafire-stream",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browse a public MediaFire folder and stream videos stored inside RAR archives, in the browser.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node server/index.ts",
+    "dev": "node --watch server/index.ts"
+  }
+}

@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>MediaFire Stream</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --card: #171717;
+        --line: rgb(255 255 255 / 0.1);
+        --line-strong: rgb(255 255 255 / 0.15);
+        --fg: #fafafa;
+        --muted: #a1a1a1;
+        --primary: #e5e5e5;
+        --primary-fg: #171717;
+        --danger: #ff6467;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100svh;
+        background: var(--bg);
+        color: var(--fg);
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 4rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      h1 { margin: 0; font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; }
+      form { display: flex; gap: 0.5rem; }
+      input {
+        flex: 1;
+        min-width: 0;
+        height: 2.5rem;
+        padding: 0 0.75rem;
+        border: 1px solid var(--line-strong);
+        border-radius: 0.5rem;
+        background: rgb(255 255 255 / 0.045);
+        color: inherit;
+        font: 14px var(--mono);
+        outline: none;
+      }
+      input::placeholder { color: var(--muted); }
+      input:focus-visible { border-color: #737373; box-shadow: 0 0 0 3px rgb(115 115 115 / 0.5); }
+      button, .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.375rem;
+        height: 2.5rem;
+        padding: 0 1rem;
+        border: 1px solid transparent;
+        border-radius: 0.5rem;
+        background: var(--primary);
+        color: var(--primary-fg);
+        font: 500 14px system-ui, sans-serif;
+        text-decoration: none;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      button:hover, .btn:hover { opacity: 0.85; }
+      button:focus-visible, .btn:focus-visible { outline: 3px solid rgb(115 115 115 / 0.5); outline-offset: 1px; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      #open { width: 6rem; }
+      .ghost { background: transparent; color: var(--fg); border-color: var(--line-strong); }
+      .sm { height: 2rem; padding: 0 0.75rem; font-size: 13px; }
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }
+
+      #player { display: flex; flex-direction: column; gap: 0.5rem; }
+      #player p { margin: 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+      video { width: 100%; max-height: 70svh; border-radius: 0.75rem; background: #000; }
+
+      .list {
+        display: flex;
+        flex-direction: column;
+        border-radius: 0.75rem;
+        background: var(--card);
+        box-shadow: 0 0 0 1px var(--line);
+        overflow: hidden;
+      }
+      .list h2 {
+        margin: 0;
+        padding: 0.75rem 1rem;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--muted);
+        border-bottom: 1px solid var(--line);
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        min-height: 3.25rem;
+        padding: 0.5rem 1rem;
+      }
+      .row + .row { border-top: 1px solid var(--line); }
+      .row.playing { background: rgb(255 255 255 / 0.04); }
+      .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+      .name small { display: block; color: var(--muted); font-size: 12px; }
+      .meta { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .error { margin: 0; color: var(--danger); }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>MediaFire Stream</h1>
+
+      <form id="form">
+        <label for="url" hidden>MediaFire folder or file link</label>
+        <input id="url" name="url" type="text" inputmode="url" autocomplete="off"
+               spellcheck="false" placeholder="https://www.mediafire.com/folder/…" autofocus />
+        <button id="open" type="submit">Open</button>
+      </form>
+
+      <p id="error" class="error" hidden></p>
+
+      <section id="player" hidden>
+        <video id="video" controls playsinline preload="metadata" crossorigin="anonymous"></video>
+        <p id="now"></p>
+      </section>
+
+      <section id="list" class="list" hidden>
+        <h2 id="folder"></h2>
+        <div id="rows"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

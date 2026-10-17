@@ -1,0 +1,19 @@
+{
+  // Editor settings only; Node runs the .ts files directly by stripping types.
+  // Optional typecheck: npx -p typescript -p @types/node tsc
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2024"],
+    "module": "nodenext",
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true
+  },
+  "include": ["server"]
+}
